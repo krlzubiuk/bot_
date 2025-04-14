@@ -1,57 +1,52 @@
-import openai
 import os
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from openai import OpenAI
 from dotenv import load_dotenv
 
-# 🔐 Завантажуємо змінні середовища
+# Завантаження змінних середовища
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-openai.api_key = OPENAI_API_KEY
+# Ініціалізація клієнта OpenAI
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-# 💬 Генерація відповіді від ChatGPT
+# Функція генерації відповіді
 def generate_openai_response(prompt: str) -> str:
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",  # або gpt-3.5-turbo
+        response = client.chat.completions.create(
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "Ти — доброзичливий Telegram-бот на базі ChatGPT."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=500,
             temperature=0.7,
-            request_timeout=10  # ⏱️ таймаут OpenAI-запиту
+            timeout=10
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print("❌ OpenAI error:", e)
         return f"❌ Помилка при зверненні до OpenAI: {e}"
 
-# 🔄 Обробка вхідних повідомлень
+# Обробка повідомлень
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
-    print("📩 Отримано повідомлення:", user_message)
-
     bot_response = generate_openai_response(user_message)
+    await update.message.reply_text(bot_response)
 
-    print("🤖 Відповідь від OpenAI:", bot_response)
-    await update.message.reply_text(bot_response[:4000])  # 🔒 Telegram максимум 4096 символів
-
-# 📌 Стартова команда /start
+# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('👋 Привіт! Я бот на базі ChatGPT. Напиши мені щось!')
 
-# 🚀 Запуск бота
+# Запуск бота
 def main():
-    print("✅ Бот запущено... Очікуємо повідомлень у Telegram")
-
-    application = Application.builder().token(TELEGRAM_TOKEN).concurrent_updates(False).build()
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    print("✅ Бот запущено... Очікуємо повідомлень")
     application.run_polling()
 
 if __name__ == '__main__':
