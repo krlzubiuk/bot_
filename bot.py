@@ -23,4 +23,5 @@ def query_huggingface(prompt):
             result = response.json()
             return result[0]["generated_text"] if isinstance(result, list) else result.get("generated_text", "🤖 Відповідь відсутня.")
         else:
-            return f"❌ Hugging Face
+            return f"❌ Hugging Face API помилка: {e}"
+
